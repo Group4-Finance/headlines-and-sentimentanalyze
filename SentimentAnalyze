@@ -25,11 +25,11 @@ vix_df["日期"] = vix_df["日期"]
 
 def vix_signal(vix_close):
       if   vix_close <= 15 :
-            return 1
+            return -1
       elif 15 < vix_close <= 25 :
             return 0    
       elif 25 < vix_close  :
-            return -1 
+            return 1 
       
 vix_df["恐慌分數"] = vix_df["Close"].apply(vix_signal)
 vix_data= vix_df[["日期", "恐慌分數", "Close"]].copy()
