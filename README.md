@@ -1,6 +1,14 @@
-要先把 要觀察的ETF折溢價、vix、鉅亨網新聞(或兆豐)的csv下載下來，並在code中的csv路徑更改為自己的。
+先把 要觀察的
 
-negative 和 positive 的txt檔也下載，並改成自己的路徑。
+1.ETF折溢價
+2.vix
+3.鉅亨網新聞
+4.兆豐財經新聞
+5.PTT_stock
+6.negative.txt 
+7.positive.txt
+
+下載下來，並在code中的csv路徑更改為自己的，
 
 start_date 和 end_date  可以更換成想觀察的時間。
 
