@@ -1,14 +1,14 @@
 先把 要觀察的
 
-1.ETF折溢價
+1.ETF折溢價(MoneyDJ_ETF_PremiumDiscount
 
-2.vix
+2.vix(vix_daily
 
-3.鉅亨網新聞
+3.鉅亨網新聞(cnyes_headlines
 
-4.兆豐財經新聞
+4.兆豐財經新聞(megabank_news
 
-5.PTT_stock
+5.PTT_stock(PTT_stock
 
 6.negative.txt 
 
