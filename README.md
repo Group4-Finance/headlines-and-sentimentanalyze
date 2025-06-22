@@ -1,18 +1,14 @@
 先把要觀察的
 
-1.ETF折溢價(MoneyDJ_ETF_PremiumDiscount
+1.鉅 亨網新聞(cnyes_headlines
 
-2.vix(vix_daily
+2.兆豐財經新聞(megabank_news
 
-3.鉅 亨網新聞(cnyes_headlines
+3.PTT_stock(PTT_stock
 
-4.兆豐財經新聞(megabank_news
+4.negative.txt 
 
-5.PTT_stock(PTT_stock
-
-6.negative.txt 
-
-7.positive.txt
+5.positive.txt
 
 下載下來，並在code中的csv路徑更改為自己的，
 
