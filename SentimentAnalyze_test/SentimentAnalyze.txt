@@ -1,0 +1,180 @@
+#%%
+import pandas as pd
+import datetime as dt
+from tabulate import tabulate
+import glob
+import matplotlib.pyplot as plt
+
+
+# --------------------------------------------------------analyse date ---------------------------------------------------
+
+start_date = pd.to_datetime("2024-05-01").date()
+end_date = pd.to_datetime("2025-05-01").date()
+
+
+# -------------------------------------------------------------vix -------------------------------------------------------
+vix_path = "C:/Users/david/Desktop/programing/Py/ETFCompare/vix/vix_daily.csv"
+vix_df = pd.read_csv(vix_path, encoding="utf-8")
+
+vix_df["日期"] = pd.to_datetime(vix_df["Date"]).dt.date 
+vix_df  = vix_df[(vix_df["日期"] >= start_date) & (vix_df["日期"] <= end_date)]
+
+
+vix_df["日期"] = vix_df["日期"]
+
+
+def vix_signal(vix_close):
+      if   vix_close <= 15 :
+            return -1
+      elif 15 < vix_close <= 25 :
+            return 0    
+      elif 25 < vix_close  :
+            return 1 
+      
+vix_df["恐慌分數"] = vix_df["Close"].apply(vix_signal)
+vix_data= vix_df[["日期", "恐慌分數", "Close"]].copy()
+vix_data.rename(columns={"Close": "VIX收盤價"}, inplace=True)
+
+
+# -----------------------------------------------------------ETF data ----------------------------------------------------
+ETF = "0056"
+ETF_data = "MoneyDJ_ETF_PremiumDiscount_" + ETF + ".csv"
+ETF_path = "C:/Users/david/Desktop/programing/Py/ETFCompare/" + ETF + "/"+ ETF_data 
+
+
+ETF_df = pd.read_csv(ETF_path, encoding="utf-8")
+
+ETF_df ["日期"] = pd.to_datetime(ETF_df["交易日期"]).dt.date 
+
+ETF_df = ETF_df[(ETF_df["日期"] >= start_date) & (ETF_df["日期"] <= end_date)].copy()
+ETF_df["折溢價利率"] = ETF_df["折溢價利率(%)"].str.replace("%", "").astype(float)
+
+def ETF_score(rate):
+    if rate >= 1:
+        return -1
+    elif -1 <= rate <= 1:
+        return 0
+    else:  
+        return 1
+
+ETF_df["折溢價分數"] = ETF_df["折溢價利率"].apply(ETF_score)
+
+
+# ------------------------------------------------------keywords ---------------------------------------------------------------------
+with open("C:/Users/david/Desktop/programing/Py/ETF.Project/negative.txt", "r", encoding="utf-8") as negative_file:
+    negative_keywords = [line.strip() for line in negative_file]   #在裡面先做strip()把/n(換行)去掉 ;  再用[]包成一個list
+
+
+
+with open("C:/Users/david/Desktop/programing/Py/ETF.Project/positive.txt", "r", encoding="utf-8") as positive_file:
+    positive_keywords = [line.strip() for line in positive_file]    
+    
+
+# -----------------------------------------------------News analyse ------------------------------------------------------------------
+
+
+
+# 改良後：計算所有正負關鍵詞出現次數 → 傳回總體情緒分數（可正可負）
+def get_sentiment(title):
+    if pd.isna(title):
+        return 0
+    pos_score = sum(word in title for word in positive_keywords)
+    neg_score = sum(word in title for word in negative_keywords)
+    return pos_score - neg_score
+
+# 左側分類：情緒越負 → 越可能進場（+1）
+def left_side_label(score):
+    if score > 0:
+        return -1
+    elif score < 0:
+        return 1
+    else:
+        return 0
+    
+# ------------------------------------------------------兆豐---------------------------------------------------------------
+
+
+megabank_news_csv = "C:/Users/david/Desktop/programing/Py/ETFCompare/BankNews/megabank_news.csv"
+megabank_news_df = pd.read_csv(megabank_news_csv)
+
+
+megabank_news_df["日期"] = pd.to_datetime(megabank_news_df["日期"]).dt.date
+
+megabank_news_df_filter = megabank_news_df[(megabank_news_df["日期"] >= start_date) & (megabank_news_df["日期"] <= end_date)].copy()
+
+megabank_news_df_filter["每日原始總分"] = megabank_news_df_filter["標題"].apply(get_sentiment)
+
+daily_sentiment = megabank_news_df_filter.groupby("日期")["每日原始總分"].sum().reset_index()
+
+daily_sentiment["左側情緒分類"] = daily_sentiment["每日原始總分"].apply(left_side_label)
+
+
+
+megabank_news_sentiment = daily_sentiment[["日期", "每日原始總分", "左側情緒分類"]]
+
+
+date_list = pd.date_range(start = start_date, end = end_date, freq="D")
+date_df = pd.DataFrame({"日期": date_list})
+date_df["日期"] = date_df["日期"].dt.date
+
+
+merged_df = pd.merge(date_df, megabank_news_sentiment ,on="日期", how="left")
+merged_df = pd.merge(merged_df, vix_data, on="日期", how="left")
+merged_df = pd.merge(merged_df,  ETF_df[["日期", "折溢價利率", "折溢價分數"]], on="日期", how="left")
+
+if "Unnamed: 0" in merged_df.columns:
+    merged_df.drop(columns=["Unnamed: 0"], inplace=True)
+print("")
+print("-----------------------------------------------------兆豐------------------------------------------------")
+print("")
+print(tabulate(merged_df, headers="keys", tablefmt="grid", showindex=False))
+
+merged_df.to_csv("C:/Users/david/Desktop/programing/Py/ETFCompare/Analyze/"+ ETF +"_megabank_news_analyze.csv")
+
+
+
+
+# ------------------------------------------------------鉅亨網-----------------------------------------------------------
+
+# 搜尋所有月份新聞檔案
+
+cnyes_News_csv = "C:/Users/david/Desktop/programing/Py/ETFCompare/News/cnyes_headlines_*"  
+all_files = glob.glob( cnyes_News_csv + ".csv")
+
+# 儲存所有資料
+all_data = []
+
+for file in all_files:
+    df = pd.read_csv(file)
+    df.columns = df.columns.str.strip()
+    df = df.rename(columns={'時間': 'date', '標題': 'title'})
+    df['date'] = pd.to_datetime(df['date']).dt.date 
+    df['sentiment'] = df['title'].apply(get_sentiment)
+    all_data.append(df)
+
+combined_df = pd.concat(all_data, ignore_index=True)
+
+daily_sentiment = combined_df.groupby('date')['sentiment'].sum().reset_index()
+daily_sentiment = daily_sentiment.rename(columns={'date': '日期', 'sentiment': '每日原始總分'})
+daily_sentiment['左側情緒分類'] = daily_sentiment['每日原始總分'].apply(left_side_label)
+
+
+daily_sentiment_filter = daily_sentiment[(daily_sentiment["日期"] >= start_date) & ((daily_sentiment["日期"] <= end_date))]
+
+
+merged_df = pd.merge(daily_sentiment_filter, vix_data, on="日期", how="left")
+merged_df = pd.merge(merged_df, ETF_df[["日期", "折溢價利率", "折溢價分數"]], on="日期", how="left")
+
+if "Unnamed: 0" in merged_df.columns:
+    merged_df.drop(columns=["Unnamed: 0"], inplace=True)
+print("")
+print("-----------------------------------------------------鉅亨網-------------------------------------------------")
+print("")
+print(tabulate(merged_df, headers="keys", tablefmt="grid", showindex=False))
+
+merged_df.to_csv("C:/Users/david/Desktop/programing/Py/ETFCompare/Analyze/"+ ETF +"_cnyes_News_analyze.csv")
+
+# ---------------------------------------------------------------------------------------------------------------
+
+
+# %%
