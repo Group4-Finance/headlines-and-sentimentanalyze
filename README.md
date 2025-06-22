@@ -10,5 +10,5 @@
 
 5.positive.txt
 
-下載下來，並在code中的csv路徑更改為自己的
+下載下來，並在code中的csv檔名更改為自己的
 
