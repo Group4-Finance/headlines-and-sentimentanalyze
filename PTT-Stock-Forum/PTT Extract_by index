@@ -1,0 +1,77 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+from datetime import datetime
+import time
+
+def get_full_date(post_url):
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    cookies = {'over18': '1'}
+
+    try:
+        res = requests.get(post_url, headers=headers, cookies=cookies)
+        soup = BeautifulSoup(res.text, "html.parser")
+        meta_tags = soup.find_all("span", class_="article-meta-value")
+        if len(meta_tags) >= 4:
+            date_str = meta_tags[3].text.strip()  # e.g. 'Wed Jun 3 10:58:01 2020'
+            date_obj = datetime.strptime(date_str, "%a %b %d %H:%M:%S %Y")
+            return date_obj.strftime("%Y/%m/%d")
+    except:
+        return "Unknown"
+
+def crawl_page(url):
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    cookies = {'over18': '1'}
+
+    res = requests.get(url, headers=headers, cookies=cookies)
+    soup = BeautifulSoup(res.text, "html.parser")
+    articles = soup.find_all("div", class_="r-ent")
+
+    data_list = []
+
+    for a in articles:
+        title_div = a.find("div", class_="title")
+        if title_div and title_div.a:
+            title = title_div.a.text.strip()
+            href = title_div.a['href']
+            post_url = "https://www.ptt.cc" + href
+            full_date = get_full_date(post_url)
+        else:
+            title = "沒標題"
+            full_date = "Unknown"
+
+        pop_div = a.find("div", class_="nrec")
+        pop = pop_div.span.text.strip() if pop_div and pop_div.span else "None"
+
+        data_list.append({
+            "標題": title,
+            "人氣": pop,
+            "日期": full_date
+        })
+
+        time.sleep(0.5)  # small delay to avoid being blocked
+
+    return data_list
+
+# === Set your page range ===
+start_index = 7001
+end_index =   8899 # For testing, small range first
+# ===========================
+
+base_url = "https://www.ptt.cc/bbs/Stock/index{}.html"
+all_data = []
+
+for i in range(start_index, end_index + 1):
+    url = base_url.format(i)
+    print(f"Crawling: {url}")
+    try:
+        data = crawl_page(url)
+        all_data.extend(data)
+        time.sleep(2.0)
+    except Exception as e:
+        print(f"⚠️ Error at {url}: {e}")
+        continue
+
+df = pd.DataFrame(all_data)
+df.to_csv("ptt_stock_realdate.csv", encoding="utf-8", index=False)
+print("✅ Done. Saved to ptt_stock_realdate.csv")

@@ -1,0 +1,47 @@
+import os
+import pandas as pd
+
+# 📂 Step 1: Set your input and output folders
+# ✅ Use raw string (r"...") to avoid issues with backslashes in Windows paths
+input_folder = r"C:/Users/YourName/Documents/csv_input"
+output_folder = r"C:/Users/YourName/Documents/csv_output"
+
+# 🛠️ Step 2: Create the output folder if it doesn't exist
+os.makedirs(output_folder, exist_ok=True)
+
+# 📦 Step 3: Create a dictionary to store rows grouped by year
+yearly_data = {}
+
+# 📄 Step 4: Loop through all CSV files in the input folder
+for filename in os.listdir(input_folder):
+    if filename.endswith(".csv"):
+        filepath = os.path.join(input_folder, filename)
+        print(f"🔍 Reading file: {filename}")
+
+        # 📥 Read the CSV file (try utf-8 first, or change to 'big5' if needed)
+        try:
+            df = pd.read_csv(filepath, encoding='utf-8')
+        except UnicodeDecodeError:
+            df = pd.read_csv(filepath, encoding='big5')
+
+        # 🗓️ Step 5: Convert the 日期 column to datetime format
+        df['日期'] = pd.to_datetime(df['日期'], format='%Y/%m/%d', errors='coerce')
+
+        # 🧹 Remove rows with invalid or missing dates
+        df = df.dropna(subset=['日期'])
+
+        # 📆 Step 6: Group data by year
+        for year in df['日期'].dt.year.unique():
+            year_df = df[df['日期'].dt.year == year]
+            if year in yearly_data:
+                yearly_data[year] = pd.concat([yearly_data[year], year_df], ignore_index=True)
+            else:
+                yearly_data[year] = year_df
+
+# 💾 Step 7: Save each year's data as a separate CSV file
+for year, data in yearly_data.items():
+    output_path = os.path.join(output_folder, f"{year}.csv")
+    data.to_csv(output_path, index=False, encoding='utf-8-sig')  # utf-8-sig works well with Chinese
+    print(f"✅ Saved: {output_path}")
+
+print("🎉 Done! All files have been split and saved by year.")
